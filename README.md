@@ -1,0 +1,96 @@
+# ACBU Soroban Smart Contracts
+
+Soroban (Stellar) smart contracts for the ACBU (African Currency Basket Unit) stablecoin platform.
+
+## Contracts
+
+- **Minting Contract** - Handles USDC → ACBU conversions
+- **Burning Contract** - Handles ACBU → Fiat redemptions
+- **Oracle Contract** - Aggregates exchange rates from multiple validators
+- **Reserve Tracker Contract** - Tracks and verifies reserve balances
+
+## Prerequisites
+
+- Rust 1.70 or higher
+- Soroban CLI (`cargo install --locked soroban-cli`)
+- Stellar account with XLM for deployment fees
+
+## Building
+
+```bash
+# Build all contracts
+cargo build --target wasm32-unknown-unknown --release
+
+# Build specific contract
+cd minting
+cargo build --target wasm32-unknown-unknown --release
+```
+
+## Testing
+
+```bash
+# Run all tests
+cargo test
+
+# Run tests for specific contract
+cd minting
+cargo test
+```
+
+## Deployment
+
+### Testnet
+
+```bash
+export STELLAR_SECRET_KEY="your-secret-key"
+./scripts/deploy_testnet.sh
+```
+
+### Mainnet
+
+```bash
+export STELLAR_SECRET_KEY="your-secret-key"
+./scripts/deploy_mainnet.sh
+```
+
+**Warning:** Only deploy to mainnet after:
+1. Testing on testnet
+2. Security audit completion
+3. Backup of secret keys
+
+## Contract Addresses
+
+After deployment, contract addresses are saved to `.soroban/deployment_{network}.json`
+
+## Development
+
+### Project Structure
+
+```
+contracts/
+├── Cargo.toml              # Workspace configuration
+├── shared/                 # Shared types and utilities
+├── minting/                # Minting contract
+├── burning/                # Burning contract
+├── oracle/                 # Oracle contract
+├── reserve_tracker/        # Reserve tracker contract
+└── scripts/                # Deployment scripts
+```
+
+### Adding a New Contract
+
+1. Create contract directory: `mkdir new_contract`
+2. Add to workspace `Cargo.toml` members
+3. Create `Cargo.toml` and `src/lib.rs`
+4. Update deployment scripts
+
+## Security
+
+- All admin functions require multisig (3 of 5)
+- Rate limits on transactions
+- Circuit breakers for anomalies
+- Time locks for critical operations
+
+## Documentation
+
+See individual contract README files for detailed documentation.
