@@ -1,5 +1,5 @@
 [package]
-name = "oracle"
+name = "acbu_reserve_tracker"
 version = "0.1.0"
 edition = "2021"
 
@@ -9,7 +9,9 @@ path = "src/lib.rs"
 
 [dependencies]
 soroban-sdk = "21.0.0"
+soroban-token-contract = "21.0.0"
 shared = { path = "../shared" }
 
 [dev-dependencies]
 soroban-sdk = { version = "21.0.0", features = ["testutils"] }
+soroban-token-contract = { version = "21.0.0", features = ["testutils"] }

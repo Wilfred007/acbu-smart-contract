@@ -64,7 +64,7 @@ echo -e "${GREEN}Deploying contracts...${NC}"
 
 # Deploy Oracle
 echo -e "${YELLOW}Deploying Oracle contract...${NC}"
-ORACLE_WASM="$CONTRACTS_DIR/target/wasm32-unknown-unknown/release/oracle.wasm"
+ORACLE_WASM="$CONTRACTS_DIR/target/wasm32-unknown-unknown/release/acbu_oracle.wasm"
 ORACLE_ID=$(soroban contract deploy \
     --wasm "$ORACLE_WASM" \
     --network "$NETWORK" \
@@ -75,7 +75,7 @@ echo -e "${GREEN}Oracle deployed: $ORACLE_ID${NC}"
 
 # Deploy Reserve Tracker
 echo -e "${YELLOW}Deploying Reserve Tracker contract...${NC}"
-RESERVE_WASM="$CONTRACTS_DIR/target/wasm32-unknown-unknown/release/reserve_tracker.wasm"
+RESERVE_WASM="$CONTRACTS_DIR/target/wasm32-unknown-unknown/release/acbu_reserve_tracker.wasm"
 RESERVE_ID=$(soroban contract deploy \
     --wasm "$RESERVE_WASM" \
     --network "$NETWORK" \
@@ -86,7 +86,7 @@ echo -e "${GREEN}Reserve Tracker deployed: $RESERVE_ID${NC}"
 
 # Deploy Minting
 echo -e "${YELLOW}Deploying Minting contract...${NC}"
-MINTING_WASM="$CONTRACTS_DIR/target/wasm32-unknown-unknown/release/minting.wasm"
+MINTING_WASM="$CONTRACTS_DIR/target/wasm32-unknown-unknown/release/acbu_minting.wasm"
 MINTING_ID=$(soroban contract deploy \
     --wasm "$MINTING_WASM" \
     --network "$NETWORK" \
@@ -97,7 +97,7 @@ echo -e "${GREEN}Minting deployed: $MINTING_ID${NC}"
 
 # Deploy Burning
 echo -e "${YELLOW}Deploying Burning contract...${NC}"
-BURNING_WASM="$CONTRACTS_DIR/target/wasm32-unknown-unknown/release/burning.wasm"
+BURNING_WASM="$CONTRACTS_DIR/target/wasm32-unknown-unknown/release/acbu_burning.wasm"
 BURNING_ID=$(soroban contract deploy \
     --wasm "$BURNING_WASM" \
     --network "$NETWORK" \

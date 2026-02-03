@@ -1,9 +1,12 @@
 [workspace]
 members = [
-    "minting",
-    "burning",
-    "oracle",
-    "reserve_tracker",
+    "acbu_minting",
+    "acbu_burning",
+    "acbu_oracle",
+    "acbu_reserve_tracker",
+    "acbu_savings_vault",
+    "acbu_lending_pool",
+    "acbu_escrow",
     "shared",
 ]
 resolver = "2"

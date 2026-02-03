@@ -1,5 +1,5 @@
 [package]
-name = "reserve_tracker"
+name = "acbu_savings_vault"
 version = "0.1.0"
 edition = "2021"
 
