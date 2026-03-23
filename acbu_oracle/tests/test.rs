@@ -7,6 +7,7 @@ use shared::CurrencyCode;
 #[test]
 fn test_initialize() {
     let env = Env::default();
+    env.mock_all_auths();
     let admin = Address::generate(&env);
     let validator1 = Address::generate(&env);
     let validator2 = Address::generate(&env);
@@ -48,6 +49,7 @@ fn test_initialize() {
 #[test]
 fn test_update_rate() {
     let env = Env::default();
+    env.mock_all_auths();
     let admin = Address::generate(&env);
     let validator = Address::generate(&env);
     
