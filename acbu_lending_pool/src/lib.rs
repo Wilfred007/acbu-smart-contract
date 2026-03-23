@@ -3,6 +3,12 @@ use soroban_sdk::{
     contract, contractimpl, contracttype, symbol_short, Address, Env, Symbol,
 };
 
+use shared::{calculate_fee, BASIS_POINTS};
+
+mod shared {
+    pub use shared::*;
+}
+
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DataKey {
@@ -89,10 +95,25 @@ impl LendingPool {
             return Err(soroban_sdk::Error::from_contract_error(2004));
         }
         lender.require_auth();
+        
+        let admin: Address = env.storage().instance().get(&DATA_KEY.admin).unwrap();
+        let fee_rate: i128 = env.storage().instance().get(&DATA_KEY.fee_rate).unwrap_or(0);
+        let fee = calculate_fee(amount, fee_rate);
+        let net_amount = amount - fee;
+
         env.storage().temporary().set(&lender, &(balance - amount));
+        
         let acbu: Address = env.storage().instance().get(&DATA_KEY.acbu_token).unwrap();
         let client = soroban_sdk::token::Client::new(&env, &acbu);
-        client.transfer(&env.current_contract_address(), &lender, &amount);
+        
+        // Transfer net amount to lender
+        client.transfer(&env.current_contract_address(), &lender, &net_amount);
+        
+        // Transfer fee to admin
+        if fee > 0 {
+            client.transfer(&env.current_contract_address(), &admin, &fee);
+        }
+        
         Ok(())
     }
 
