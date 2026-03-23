@@ -80,13 +80,13 @@ impl Escrow {
             return Err(soroban_sdk::Error::from_contract_error(3002));
         }
         payer.require_auth();
-        let acbu: Address = env.storage().instance().get(&DATA_KEY.acbu_token).unwrap().unwrap();
+        let acbu: Address = env.storage().instance().get(&DATA_KEY.acbu_token).unwrap();
         let client = soroban_sdk::token::Client::new(&env, &acbu);
         client.transfer(&payer, &env.current_contract_address(), &amount);
         let key = (symbol_short!("ESCROW"), escrow_id);
         env.storage().temporary().set(&key, &(payer.clone(), payee.clone(), amount));
         env.events().publish(
-            (symbol_short!("EscrowCreated"), escrow_id),
+            (symbol_short!("EscrCrte"), escrow_id),
             EscrowCreatedEvent {
                 escrow_id,
                 payer: payer.clone(),
@@ -107,11 +107,11 @@ impl Escrow {
         let key = (symbol_short!("ESCROW"), escrow_id);
         let (_payer, payee, amount): (Address, Address, i128) = env.storage().temporary().get(&key).ok_or(soroban_sdk::Error::from_contract_error(3003))?;
         env.storage().temporary().remove(&key);
-        let acbu: Address = env.storage().instance().get(&DATA_KEY.acbu_token).unwrap().unwrap();
+        let acbu: Address = env.storage().instance().get(&DATA_KEY.acbu_token).unwrap();
         let client = soroban_sdk::token::Client::new(&env, &acbu);
         client.transfer(&env.current_contract_address(), &payee, &amount);
         env.events().publish(
-            (symbol_short!("EscrowReleased"), escrow_id),
+            (symbol_short!("EscrRel"), escrow_id),
             EscrowReleasedEvent {
                 escrow_id,
                 payee: payee.clone(),
@@ -124,7 +124,7 @@ impl Escrow {
 
     /// Refund escrow: payer gets ACBU back (admin or dispute resolution)
     pub fn refund(env: Env, escrow_id: u64, payer: Address) -> Result<(), soroban_sdk::Error> {
-        let admin: Address = env.storage().instance().get(&DATA_KEY.admin).unwrap().unwrap();
+        let admin: Address = env.storage().instance().get(&DATA_KEY.admin).unwrap();
         admin.require_auth();
         let key = (symbol_short!("ESCROW"), escrow_id);
         let (stored_payer, _payee, amount): (Address, Address, i128) = env.storage().temporary().get(&key).ok_or(soroban_sdk::Error::from_contract_error(3003))?;
@@ -132,11 +132,11 @@ impl Escrow {
             return Err(soroban_sdk::Error::from_contract_error(3004));
         }
         env.storage().temporary().remove(&key);
-        let acbu: Address = env.storage().instance().get(&DATA_KEY.acbu_token).unwrap().unwrap();
+        let acbu: Address = env.storage().instance().get(&DATA_KEY.acbu_token).unwrap();
         let client = soroban_sdk::token::Client::new(&env, &acbu);
         client.transfer(&env.current_contract_address(), &payer, &amount);
         env.events().publish(
-            (symbol_short!("EscrowRefunded"), escrow_id),
+            (symbol_short!("EscrRef"), escrow_id),
             EscrowRefundedEvent {
                 escrow_id,
                 payer: payer.clone(),
@@ -148,14 +148,14 @@ impl Escrow {
     }
 
     pub fn pause(env: Env) -> Result<(), soroban_sdk::Error> {
-        let admin: Address = env.storage().instance().get(&DATA_KEY.admin).unwrap().unwrap();
+        let admin: Address = env.storage().instance().get(&DATA_KEY.admin).unwrap();
         admin.require_auth();
         env.storage().instance().set(&DATA_KEY.paused, &true);
         Ok(())
     }
 
     pub fn unpause(env: Env) -> Result<(), soroban_sdk::Error> {
-        let admin: Address = env.storage().instance().get(&DATA_KEY.admin).unwrap().unwrap();
+        let admin: Address = env.storage().instance().get(&DATA_KEY.admin).unwrap();
         admin.require_auth();
         env.storage().instance().set(&DATA_KEY.paused, &false);
         Ok(())

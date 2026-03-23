@@ -3,17 +3,10 @@ use soroban_sdk::{
     contract, contractimpl, contracttype, symbol_short, Address, Env, Map, Symbol,
 };
 
-use shared::{CurrencyCode, ReserveData, DECIMALS, BASIS_POINTS};
+use shared::{CurrencyCode, ReserveData, BASIS_POINTS};
 
 mod shared {
     pub use shared::*;
-}
-
-mod token {
-    soroban_sdk::contractimport!(
-        file = "../../target/wasm32-unknown-unknown/release/soroban_token_contract.wasm",
-        sha256 = "0x0000000000000000000000000000000000000000000000000000000000000000"
-    );
 }
 
 #[contracttype]
@@ -100,13 +93,13 @@ impl ReserveTrackerContract {
         let reserves: Map<CurrencyCode, ReserveData> =
             env.storage().instance().get(&DATA_KEY.reserves).unwrap_or(Map::new(&env));
         reserves
-            .get(&currency)
+            .get(currency)
             .unwrap_or_else(|| panic!("Reserve not found for currency"))
     }
 
     /// Verify reserves meet overcollateralization requirements
     pub fn verify_reserves(env: Env) -> bool {
-        let reserves: Map<CurrencyCode, ReserveData> =
+        let _reserves: Map<CurrencyCode, ReserveData> =
             env.storage().instance().get(&DATA_KEY.reserves).unwrap_or(Map::new(&env));
         let min_ratio: i128 = env.storage().instance().get(&DATA_KEY.min_ratio).unwrap();
 
@@ -115,7 +108,7 @@ impl ReserveTrackerContract {
 
         // Get total ACBU supply
         let acbu_token: Address = env.storage().instance().get(&DATA_KEY.acbu_token).unwrap();
-        let acbu_client = token::Client::new(&env, &acbu_token);
+        let acbu_client = soroban_sdk::token::Client::new(&env, &acbu_token);
         let total_supply = acbu_client.balance(&env.current_contract_address());
 
         if total_supply == 0 {
@@ -158,8 +151,6 @@ impl ReserveTrackerContract {
 
     fn check_admin(env: &Env) {
         let admin: Address = env.storage().instance().get(&DATA_KEY.admin).unwrap();
-        if admin != env.invoker() {
-            panic!("Unauthorized: admin only");
-        }
+        admin.require_auth();
     }
 }

@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use super::*;
+use acbu_oracle::{OracleContract, OracleContractClient};
 use soroban_sdk::{testutils::Address as _, Address, Env, Map, Vec};
 use shared::CurrencyCode;
 
@@ -80,7 +80,7 @@ fn test_update_rate() {
     sources.push_back(1235000i128);
     sources.push_back(1239000i128);
     
-    client.update_rate(&ngn, &rate, &sources, &env.ledger().timestamp());
+    client.update_rate(&validator, &ngn, &rate, &sources, &env.ledger().timestamp());
     
     let stored_rate = client.get_rate(&ngn);
     assert_eq!(stored_rate, rate);

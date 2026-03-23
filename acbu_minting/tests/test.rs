@@ -10,11 +10,8 @@ fn setup_env() -> (Env, Address, Address, Address, Address, Address, i128, Minti
     let oracle = Address::generate(&env);
     let reserve_tracker = Address::generate(&env);
     
-    let usdc_token = env.register_stellar_asset_contract_v2(admin.clone()).address();
-    let acbu_token = env.register_stellar_asset_contract_v2(admin.clone()).address();
-    let fee_rate = 300; // 3%
-
     let contract_id = env.register_contract(None, MintingContract);
+    let acbu_token = env.register_stellar_asset_contract_v2(contract_id.clone()).address();
     let client = MintingContractClient::new(&env, &contract_id);
 
     client.initialize(

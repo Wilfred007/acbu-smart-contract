@@ -113,19 +113,29 @@ pub fn calculate_amount_after_fee(amount: i128, fee_rate_bps: i128) -> i128 {
 }
 
 /// Calculate median of sorted values
-pub fn median(values: &[i128]) -> Option<i128> {
+pub fn median(values: soroban_sdk::Vec<i128>) -> Option<i128> {
     if values.is_empty() {
         return None;
     }
     
-    let mut sorted = values.to_vec();
-    sorted.sort();
+    let mut sorted = values.clone();
+    let n = sorted.len();
+    for i in 0..n {
+        for j in 0..n - 1 - i {
+            let v1 = sorted.get(j).unwrap();
+            let v2 = sorted.get(j + 1).unwrap();
+            if v1 > v2 {
+                sorted.set(j, v2);
+                sorted.set(j + 1, v1);
+            }
+        }
+    }
     
-    let mid = sorted.len() / 2;
-    if sorted.len() % 2 == 0 {
-        Some((sorted[mid - 1] + sorted[mid]) / 2)
+    let mid = n / 2;
+    if n % 2 == 0 {
+        Some((sorted.get(mid - 1).unwrap() + sorted.get(mid).unwrap()) / 2)
     } else {
-        Some(sorted[mid])
+        Some(sorted.get(mid).unwrap())
     }
 }
 
