@@ -1,7 +1,7 @@
 #![cfg(test)]
 
 use acbu_oracle::{OracleContract, OracleContractClient};
-use soroban_sdk::{testutils::Address as _, Address, Env, Map, Vec};
+use soroban_sdk::{testutils::{Address as _, Ledger}, Address, Env, Map, Vec};
 use shared::CurrencyCode;
 
 #[test]
