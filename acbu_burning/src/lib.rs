@@ -13,12 +13,8 @@ mod shared {
     pub use shared::*;
 }
 
-mod token {
-    soroban_sdk::contractimport!(
-        file = "../../target/wasm32-unknown-unknown/release/soroban_token_contract.wasm",
-        sha256 = "0x0000000000000000000000000000000000000000000000000000000000000000"
-    );
-}
+// Removed contractimport! because the WASM file is missing.
+// We'll use the built-in soroban_sdk::token::Client instead.
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -83,24 +79,25 @@ impl BurningContract {
     /// Burn ACBU for single currency redemption
     pub fn burn_for_currency(
         env: Env,
+        user: Address,
         acbu_amount: i128,
         currency: SorobanString,
-        recipient_account: AccountDetails,
+        _recipient_account: AccountDetails,
     ) -> i128 {
         Self::check_paused(&env);
-        let caller = env.invoker();
+        user.require_auth();
 
         // Validate amount
-        let min_amount = env.storage().instance().get(&DATA_KEY.min_burn_amount).unwrap();
+        let min_amount: i128 = env.storage().instance().get(&DATA_KEY.min_burn_amount).unwrap();
         if acbu_amount < min_amount {
             panic!("Invalid burn amount");
         }
 
         // Get contract addresses
-        let oracle = env.storage().instance().get(&DATA_KEY.oracle).unwrap();
-        let reserve_tracker = env.storage().instance().get(&DATA_KEY.reserve_tracker).unwrap();
-        let acbu_token = env.storage().instance().get(&DATA_KEY.acbu_token).unwrap();
-        let fee_rate = env.storage().instance().get(&DATA_KEY.fee_rate).unwrap();
+        let _oracle: Address = env.storage().instance().get(&DATA_KEY.oracle).unwrap();
+        let _reserve_tracker: Address = env.storage().instance().get(&DATA_KEY.reserve_tracker).unwrap();
+        let acbu_token: Address = env.storage().instance().get(&DATA_KEY.acbu_token).unwrap();
+        let fee_rate: i128 = env.storage().instance().get(&DATA_KEY.fee_rate).unwrap();
 
         // Get currency/USD rate from oracle
         // Note: In production, this would call the oracle contract
@@ -117,18 +114,18 @@ impl BurningContract {
         let usd_value = (acbu_after_fee * DECIMALS) / DECIMALS; // Assuming 1:1 ACBU:USD
         let local_amount = (usd_value * DECIMALS) / currency_rate;
 
-        // Burn ACBU from caller
-        let acbu_client = token::Client::new(&env, &acbu_token);
-        acbu_client.burn(&caller, &acbu_amount);
+        // Burn ACBU from user
+        let acbu_client = soroban_sdk::token::Client::new(&env, &acbu_token);
+        acbu_client.burn(&user, &acbu_amount);
 
         // Calculate fee
         let fee = calculate_fee(acbu_amount, fee_rate);
 
         // Emit BurnEvent
-        let tx_id = SorobanString::from_str(&format!("burn_{}", env.ledger().sequence()));
+        let tx_id = SorobanString::from_str(&env, "burn");
         let burn_event = BurnEvent {
             transaction_id: tx_id,
-            user: caller.clone(),
+            user: user.clone(),
             acbu_amount,
             local_amount,
             currency: currency_code,
@@ -136,7 +133,7 @@ impl BurningContract {
             rate: currency_rate,
             timestamp: env.ledger().timestamp(),
         };
-        env.events().publish((symbol_short!("burn"), caller), burn_event);
+        env.events().publish((symbol_short!("burn"), user), burn_event);
 
         local_amount
     }
@@ -144,61 +141,84 @@ impl BurningContract {
     /// Burn ACBU for basket redemption (proportional)
     pub fn burn_for_basket(
         env: Env,
+        user: Address,
         acbu_amount: i128,
         recipient_accounts: Vec<AccountDetails>,
     ) -> Vec<i128> {
         Self::check_paused(&env);
-        let caller = env.invoker();
+        user.require_auth();
 
         // Validate amount
-        let min_amount = env.storage().instance().get(&DATA_KEY.min_burn_amount).unwrap();
+        let min_amount: i128 = env.storage().instance().get(&DATA_KEY.min_burn_amount).unwrap();
         if acbu_amount < min_amount {
             panic!("Invalid burn amount");
         }
 
-        if recipient_accounts.len() == 0 {
+        let num_recipients = recipient_accounts.len() as i128;
+        if num_recipients == 0 {
             panic!("No recipient accounts provided");
         }
 
         // Get contract addresses
-        let acbu_token = env.storage().instance().get(&DATA_KEY.acbu_token).unwrap();
-        let fee_rate = env.storage().instance().get(&DATA_KEY.fee_rate).unwrap();
+        let acbu_token: Address = env.storage().instance().get(&DATA_KEY.acbu_token).unwrap();
+        let fee_rate: i128 = env.storage().instance().get(&DATA_KEY.fee_rate).unwrap();
 
-        // Calculate amounts per currency based on basket weights
-        // For MVP: Equal distribution
-        let acbu_after_fee = calculate_amount_after_fee(acbu_amount, fee_rate);
-        let amount_per_account = acbu_after_fee / (recipient_accounts.len() as i128);
+        // Calculate total fee and net amount from the total gross amount
+        let total_fee = calculate_fee(acbu_amount, fee_rate);
+        let total_net_amount = acbu_amount - total_fee;
 
-        // Burn ACBU from caller
-        let acbu_client = token::Client::new(&env, &acbu_token);
-        acbu_client.burn(&caller, &acbu_amount);
+        // Burn ACBU from user
+        let acbu_client = soroban_sdk::token::Client::new(&env, &acbu_token);
+        acbu_client.burn(&user, &acbu_amount);
 
-        // Calculate local amounts for each currency
+        // Distribute amounts across recipients
         let mut local_amounts = Vec::new(&env);
-        for account in recipient_accounts.iter() {
+        let mut distributed_gross = 0i128;
+        let mut distributed_fee = 0i128;
+        let mut distributed_net = 0i128;
+
+        for (i, account) in recipient_accounts.iter().enumerate() {
+            let is_last = (i as i128) == num_recipients - 1;
+
+            // Calculate per-account amounts with remainder handling for the last recipient
+            let (account_gross, account_fee, account_net) = if is_last {
+                (
+                    acbu_amount - distributed_gross,
+                    total_fee - distributed_fee,
+                    total_net_amount - distributed_net,
+                )
+            } else {
+                (
+                    acbu_amount / num_recipients,
+                    total_fee / num_recipients,
+                    total_net_amount / num_recipients,
+                )
+            };
+
+            distributed_gross += account_gross;
+            distributed_fee += account_fee;
+            distributed_net += account_net;
+
             // Get currency rate
             let currency_rate = DECIMALS; // 1:1 with USD initially
-            let usd_value = (amount_per_account * DECIMALS) / DECIMALS;
+            let usd_value = (account_net * DECIMALS) / DECIMALS;
             let local_amount = (usd_value * DECIMALS) / currency_rate;
             local_amounts.push_back(local_amount);
 
             // Emit BurnEvent for each currency
-            let tx_id = SorobanString::from_str(&format!(
-                "burn_basket_{}_{}",
-                env.ledger().sequence(),
-                account.currency.0
-            ));
+            let tx_id = SorobanString::from_str(&env, "burn_basket");
+
             let burn_event = BurnEvent {
                 transaction_id: tx_id,
-                user: caller.clone(),
-                acbu_amount: amount_per_account,
+                user: user.clone(),
+                acbu_amount: account_gross,
                 local_amount,
                 currency: account.currency.clone(),
-                fee: calculate_fee(amount_per_account, fee_rate),
+                fee: account_fee,
                 rate: currency_rate,
                 timestamp: env.ledger().timestamp(),
             };
-            env.events().publish((symbol_short!("burn"), caller.clone()), burn_event);
+            env.events().publish((symbol_short!("burn"), user.clone()), burn_event);
         }
 
         local_amounts
@@ -227,7 +247,8 @@ impl BurningContract {
 
     /// Get current fee rate
     pub fn get_fee_rate(env: Env) -> i128 {
-        env.storage().instance().get(&DATA_KEY.fee_rate).unwrap()
+        let fee_rate: i128 = env.storage().instance().get(&DATA_KEY.fee_rate).unwrap();
+        fee_rate
     }
 
     /// Check if contract is paused
@@ -249,8 +270,6 @@ impl BurningContract {
 
     fn check_admin(env: &Env) {
         let admin: Address = env.storage().instance().get(&DATA_KEY.admin).unwrap();
-        if admin != env.invoker() {
-            panic!("Unauthorized: admin only");
-        }
+        admin.require_auth();
     }
 }
